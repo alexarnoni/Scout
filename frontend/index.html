@@ -986,7 +986,7 @@ async function showPage(page) {
       const div = document.createElement('div');
       div.id = 'about-page';
       div.style.cssText = 'padding:40px;max-width:700px;margin:0 auto;overflow-y:auto;height:calc(100vh - 45px)';
-      div.innerHTML = `<h2 style="color:var(--text-primary);font-size:20px;margin-bottom:16px">Sobre o projeto</h2><p style="color:var(--text-secondary);line-height:1.7;margin-bottom:12px">Scout Brasileirão é uma ferramenta de análise de dados para o Campeonato Brasileiro Série A 2026. O objetivo é auxiliar profissionais de futebol na identificação de talentos e análise de desempenho.</p><p style="color:var(--text-secondary);line-height:1.7;margin-bottom:12px">O modelo de scout avalia jogadores por posição usando métricas normalizadas por 90 minutos, identificando automaticamente <strong style="color:var(--accent)">Joias Escondidas</strong> — jogadores com alto score e poucos minutos jogados.</p><p style="color:var(--text-secondary);line-height:1.7;margin-bottom:24px">Dados via ESPN API e SportDB/Flashscore. Desenvolvido por Alexandre Arnoni.</p><div style="font-size:11px;color:var(--text-muted)">Stack: Python · FastAPI · PostgreSQL · Docker · JavaScript</div>`;
+      div.innerHTML = `<h2 style="color:var(--text-primary);font-size:20px;margin-bottom:16px">Sobre o projeto</h2><p style="color:var(--text-secondary);line-height:1.7;margin-bottom:12px">Scout Brasileirão é uma ferramenta de análise de dados para o Campeonato Brasileiro Série A 2026. O objetivo é auxiliar profissionais de futebol na identificação de talentos e análise de desempenho.</p><p style="color:var(--text-secondary);line-height:1.7;margin-bottom:12px">O modelo de scout avalia jogadores por posição usando métricas normalizadas por 90 minutos, identificando automaticamente <strong style="color:var(--accent)">Joias Escondidas</strong> — jogadores com alto score e poucos minutos jogados.</p><p style="color:var(--text-secondary);line-height:1.7;margin-bottom:24px">Dados via ESPN API e SportDB/Flashscore. Desenvolvido por Alexandre Arnoni.</p><div style="font-size:11px;color:var(--text-muted)">Stack: Python · FastAPI · PostgreSQL · Docker · JavaScript</div><footer style="margin-top:40px;padding-top:16px;border-top:1px solid var(--border);text-align:center;color:var(--text-muted);font-size:11px">Scout · Brasileirão 2026 · Dados via ESPN API e SportDB</footer>`;
       document.body.appendChild(div);
     } else about.style.display = 'block';
   }
@@ -1004,7 +1004,8 @@ async function loadRanking(container, position) {
         <span style="font-size:11px;color:var(--text-muted);margin-left:8px">mín. 180 min</span>
       </div>
       <div id="ranking-body"><div class="ranking-empty">Carregando...</div></div>
-    </div>`;
+    </div>
+    <footer style="padding:16px 32px;border-top:1px solid var(--border);text-align:center;color:var(--text-muted);font-size:11px">Scout · Brasileirão 2026 · Dados via ESPN API e SportDB</footer>`;
 
   try {
     const players = await api('/scout/ranking', { competition_id: competitionId, position });
@@ -1074,7 +1075,8 @@ async function loadGarimpo(container, position = 'Todos') {
         </span>
       </div>
       <div id="ranking-body"><div class="ranking-empty">Calculando Garimpo... pode demorar alguns segundos.</div></div>
-    </div>`;
+    </div>
+    <footer style="padding:16px 32px;border-top:1px solid var(--border);text-align:center;color:var(--text-muted);font-size:11px">Scout · Brasileirão 2026 · Dados via ESPN API e SportDB</footer>`;
 
   try {
     let players = [];
