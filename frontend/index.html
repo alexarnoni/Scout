@@ -278,9 +278,9 @@ svg#field { display: block; width: 100%; height: auto; }
 .rating-val { font-size: 13px; font-weight: 600; text-align: right; }
 .ranking-empty { padding: 40px; text-align: center; color: var(--text-muted); font-size: 14px; }
 .analysis-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
-@media (min-width: 768px) and (max-width: 1100px) {
+@media (min-width: 768px) and (max-width: 900px) {
   .analysis-grid { grid-template-columns: 1fr 1fr; }
-  .analysis-grid > div:first-child { grid-column: 1 / -1; }
+  .analysis-grid > div:last-child { grid-column: 1 / -1; }
 }
 @media (max-width: 767px) {
   .analysis-grid { grid-template-columns: 1fr; }
