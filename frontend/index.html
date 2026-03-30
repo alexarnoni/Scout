@@ -577,7 +577,7 @@ async function renderProfile(container, team, summary, allMatches, squad, fsLine
     .filter(m => m.result === 'W' || m.result === 'D' || m.result === 'L')
     .sort((a,b) => new Date(a.match_date_time) - new Date(b.match_date_time));
 
-  const last5 = finished.slice(-5);
+  const last5 = finished.slice(-5).reverse();
 
   // KPIs — usa summary da SportDB se disponível, senão calcula do ESPN
   let played, wins, draws, losses, gf, ga;
