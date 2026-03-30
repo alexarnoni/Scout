@@ -530,15 +530,16 @@ async function selectTeam(id, teamMeta) {
   profile.style.display = 'block';
   profile.innerHTML = skeletonHTML();
   try {
-    const [summary, matches, squad, fsLineup, seasonAvgs] = await Promise.all([
+    const [summary, matches, squad, fsLineup, seasonAvgs, fixtures] = await Promise.all([
       api(`/teams/${id}/analytics/summary`, { window: 38 }).catch(() => null),
       api(`/teams/${id}/matches`),
       api(`/teams/${id}/squad`),
       api(`/teams/${id}/flashscore_lineup`).catch(() => null),
       api(`/teams/${id}/season_averages`).catch(() => ({})),
+      api(`/teams/${id}/next_fixture`).catch(() => null),
     ]);
     const team = teamMeta || allTeams.find(t => t.teamId === id) || squad.team || {};
-    renderProfile(profile, team, summary, matches, squad, fsLineup, seasonAvgs);
+    renderProfile(profile, team, summary, matches, squad, fsLineup, seasonAvgs, fixtures);
   } catch(e) {
     profile.innerHTML = `<div class="section" style="color:var(--loss)">Erro ao carregar dados do time.</div>`;
     console.error(e);
@@ -570,7 +571,7 @@ function skeletonHTML() {
 }
 
 // ── render profile ────────────────────────────────────────────────────────
-async function renderProfile(container, team, summary, allMatches, squad, fsLineup, seasonAvgs) {
+async function renderProfile(container, team, summary, allMatches, squad, fsLineup, seasonAvgs, fixtures) {
   const finished = allMatches
     .filter(m => m.result === 'W' || m.result === 'D' || m.result === 'L')
     .sort((a,b) => new Date(a.match_date_time) - new Date(b.match_date_time));
@@ -724,7 +725,7 @@ const analysisHTML = `
   container.innerHTML = `
   <!-- HERO -->
   <div class="hero">
-    <img src="${team.logo_url || ''}" alt="${team.name}" onerror="this.style.display='none'" />
+    <img src="${team.logo_url || (fixtures && fixtures.team_logo) || ''}" alt="${team.name}" onerror="this.style.display='none'" />
     <div class="hero-info">
       <div class="hero-name">${team.name || '—'}</div>
       <div class="hero-city">${team.city || ''}</div>

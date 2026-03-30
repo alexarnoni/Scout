@@ -426,14 +426,18 @@ def get_next_fixture(team_id: str) -> dict:
         start = int(match.get("startUtime", 0))
         if team_id in (home, away) and start > now_ts:
             dt = datetime.datetime.fromtimestamp(start, tz=datetime.timezone(datetime.timedelta(hours=-3)))
+            is_home = home == team_id
+            team_logo_hash = match.get("homeLogo", "") if is_home else match.get("awayLogo", "")
+            team_logo = f"https://static.flashscore.com/res/image/data/{team_logo_hash}" if team_logo_hash else ""
             return {
                 "event_id": match.get("eventId"),
                 "date": dt.strftime("%a, %d %b · %H:%M"),
                 "competition": "Brasileirão Série A",
                 "home_name": match.get("homeFirstName", ""),
                 "away_name": match.get("awayFirstName", ""),
-                "home_logo": match.get("homeLogo", ""),
-                "away_logo": match.get("awayLogo", ""),
+                "home_logo": f"https://static.flashscore.com/res/image/data/{match.get('homeLogo', '')}" if match.get("homeLogo") else "",
+                "away_logo": f"https://static.flashscore.com/res/image/data/{match.get('awayLogo', '')}" if match.get("awayLogo") else "",
+                "team_logo": team_logo,
                 "venue": "",
             }
     raise HTTPException(status_code=404, detail="Sem próximo jogo")
