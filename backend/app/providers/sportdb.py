@@ -120,18 +120,18 @@ def get_match_stats(event_id: str) -> list[dict]:
     return _cached_get(f'stats_{event_id}', lambda: _fetch_match_stats(event_id))
 
 
-def get_team_season_averages(team_slug: str, season: str = "2026") -> dict:
-    return _cached_get(f'averages_{team_slug}_{season}', lambda: _fetch_team_averages(team_slug, season))
+def get_team_season_averages(team_id: str, season: str = "2026") -> dict:
+    return _cached_get(f'averages_{team_id}_{season}', lambda: _fetch_team_averages(team_id, season))
 
 
-def _fetch_team_averages(team_slug: str, season: str = "2026") -> dict:
+def _fetch_team_averages(team_id: str, season: str = "2026") -> dict:
     results = _fetch_results(season)
     event_ids = []
-    for match in results:
-        home = match.get("homeParticipantNameUrl", "")
-        away = match.get("awayParticipantNameUrl", "")
-        if team_slug in (home, away):
-            event_ids.append((match.get("eventId"), home == team_slug))
+    for match in reversed(results):
+        home = match.get("homeParticipantIds", "")
+        away = match.get("awayParticipantIds", "")
+        if team_id in (home, away):
+            event_ids.append((match.get("eventId"), home == team_id))
         if len(event_ids) >= 5:
             break
 
