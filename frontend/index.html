@@ -676,9 +676,6 @@ async function renderProfile(container, team, summary, allMatches, squad, fsLine
   const seasonRows = renderStatRows(SEASON_STATS, seasonStats, false, isHome);
   const lastRows = renderStatRows(LAST_STATS, lastStats, true, isHome);
 
-// busca próximo jogo
-const fixtures = await api(`/teams/${team.id}/next_fixture`).catch(() => null);
-
 const analysisHTML = `
 <div class="section">
     <div class="analysis-grid">
