@@ -421,17 +421,12 @@ const POS_LABEL   = { GK:'Goleiro', DEF:'Defensor', MID:'Meio-campo', AMF:'Meia 
 function posGroup(pos) { return POS_GROUP[pos] || null; }
 
 // ── state ─────────────────────────────────────────────────────────────────
-let competitionId = null;
 let allTeams = [];
 let selectedTeamId = null;
 
 // ── init ──────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    const comps = await api('/competitions');
-    const comp = comps.find(c => /brasileir/i.test(c.name)) || comps[0];
-    if (!comp) return;
-    competitionId = comp.id;
     await loadStandings();
   } catch(e) { console.error('Init failed', e); }
 }
@@ -468,17 +463,17 @@ async function loadStandings() {
       const rankClass = t.rankClass ? `rank-${t.rankClass}` : '';
       const tr = document.createElement('tr');
       tr.className = rankClass;
-      tr.dataset.slug = t.teamSlug;
+      tr.dataset.teamId = t.teamId;
       tr.innerHTML = `
         <td>${t.rank}</td>
         <td>${t.teamName}</td>
         <td><strong>${t.points}</strong></td>
         <td>${t.matches}</td>`;
-      tr.addEventListener('click', () => selectTeamBySlug(t.teamSlug, t.teamName));
+      tr.addEventListener('click', () => selectTeamFromStandings(t));
       tbody.appendChild(tr);
 
       const opt = document.createElement('option');
-      opt.value = t.teamSlug;
+      opt.value = t.teamId;
       opt.textContent = t.teamName;
       mob.appendChild(opt);
     });
@@ -488,28 +483,23 @@ async function loadStandings() {
   }
 }
 
-// ── select team by slug ───────────────────────────────────────────────────
-const SLUG_TO_NAME = {
-  'sao-paulo': 'São Paulo', 'palmeiras': 'Palmeiras', 'flamengo-rj': 'Flamengo',
-  'fluminense': 'Fluminense', 'bahia': 'Bahia', 'bragantino': 'Red Bull Bragantino',
-  'coritiba': 'Coritiba', 'athletico-pr': 'Athletico-PR', 'gremio': 'Grêmio',
-  'corinthians': 'Corinthians', 'vitoria': 'Vitória', 'mirassol': 'Mirassol',
-  'chapecoense-sc': 'Chapecoense', 'santos': 'Santos', 'atletico-mg': 'Atlético-MG',
-  'vasco': 'Vasco da Gama', 'botafogo-rj': 'Botafogo', 'remo': 'Remo',
-  'internacional': 'Internacional', 'cruzeiro': 'Cruzeiro',
-};
-
-async function selectTeamBySlug(slug, name) {
-  const teams = await api(`/competitions/${competitionId}/teams`);
-  const teamName = SLUG_TO_NAME[slug] || name;
-  const team = teams.find(t => t.name === teamName);
-  if (team) {
-    document.querySelectorAll('#standings-body tr').forEach(tr => {
-      tr.classList.toggle('active', tr.dataset.slug === slug);
-    });
-    selectTeam(team.id);
-    if (window.innerWidth < 768) toggleSidebar();
-  }
+// ── select team from standings ────────────────────────────────────────────
+function selectTeamFromStandings(standingsRow) {
+  const team = {
+    id: standingsRow.teamId,
+    name: standingsRow.teamName,
+    slug: standingsRow.teamSlug,
+    logo_url: `https://static.flashscore.com/res/image/data/${standingsRow.teamId}.png`,
+    rank: standingsRow.rank,
+    points: standingsRow.points,
+    matches: standingsRow.matches,
+    form: standingsRow.form,
+  };
+  document.querySelectorAll('#standings-body tr').forEach(tr => {
+    tr.classList.toggle('active', tr.dataset.teamId === standingsRow.teamId);
+  });
+  selectTeam(team.id, team);
+  if (window.innerWidth < 768) toggleSidebar();
 }
 
 // ── api ───────────────────────────────────────────────────────────────────
@@ -524,11 +514,14 @@ async function api(path, params = {}) {
 // ── sidebar ───────────────────────────────────────────────────────────────
 
 document.getElementById('mobile-select').addEventListener('change', e => {
-  if (e.target.value) selectTeamBySlug(e.target.value, e.target.options[e.target.selectedIndex].text);
+  if (!e.target.value) return;
+  const teamId = e.target.value;
+  const row = allTeams.find(t => t.teamId === teamId);
+  if (row) selectTeamFromStandings(row);
 });
 
 // ── select team ───────────────────────────────────────────────────────────
-async function selectTeam(id) {
+async function selectTeam(id, teamMeta) {
   selectedTeamId = id;
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('open');
@@ -538,13 +531,13 @@ async function selectTeam(id) {
   profile.innerHTML = skeletonHTML();
   try {
     const [summary, matches, squad, fsLineup, seasonAvgs] = await Promise.all([
-      api(`/teams/${id}/analytics/summary`, { competition_id: competitionId, window: 38 }),
+      api(`/teams/${id}/analytics/summary`, { window: 38 }),
       api(`/teams/${id}/matches`),
       api(`/teams/${id}/squad`),
       api(`/teams/${id}/flashscore_lineup`).catch(() => null),
       api(`/teams/${id}/season_averages`).catch(() => ({})),
     ]);
-    const team = allTeams.find(t => t.id === id) || squad.team || {};
+    const team = teamMeta || allTeams.find(t => t.teamId === id) || squad.team || {};
     renderProfile(profile, team, summary, matches, squad, fsLineup, seasonAvgs);
   } catch(e) {
     profile.innerHTML = `<div class="section" style="color:var(--loss)">Erro ao carregar dados do time.</div>`;
@@ -1007,7 +1000,7 @@ async function loadRanking(container, position) {
     <footer style="padding:16px 32px;border-top:1px solid var(--border);text-align:center;color:var(--text-muted);font-size:11px">Scout · Brasileirão 2026 · Dados via ESPN API e SportDB</footer>`;
 
   try {
-    const players = await api('/scout/ranking', { competition_id: competitionId, position });
+    const players = await api('/scout/ranking', { position });
     const body = document.getElementById('ranking-body');
 
     if (!players.length) {
@@ -1082,11 +1075,11 @@ async function loadGarimpo(container, position = 'Todos') {
 
     if (position === 'Todos') {
       const all = await Promise.all(
-        POSITIONS.map(p => api('/scout/moneyball', { competition_id: competitionId, position: p, min_minutes: 180 }).catch(() => []))
+        POSITIONS.map(p => api('/scout/moneyball', { position: p, min_minutes: 180 }).catch(() => []))
       );
       players = all.flat();
     } else {
-      players = await api('/scout/moneyball', { competition_id: competitionId, position, min_minutes: 180 });
+      players = await api('/scout/moneyball', { position, min_minutes: 180 });
     }
 
     players = players
