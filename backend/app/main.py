@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+import asyncio
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import or_, select
@@ -65,7 +68,21 @@ from app.providers.sportdb import (
 )
 from app.schemas.scout import PlayerScoutCard, ScoutRanking
 
-app = FastAPI(title="Scout API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app):
+    async def warmup():
+        await asyncio.sleep(5)
+        try:
+            from .providers.sportdb_scout import get_player_season_stats
+            get_player_season_stats()
+        except Exception:
+            pass
+    asyncio.create_task(warmup())
+    yield
+
+
+app = FastAPI(title="Scout API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://scout.alexarnoni.com"],
