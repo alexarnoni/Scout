@@ -556,7 +556,7 @@ async function selectTeam(id, teamMeta) {
       api(`/teams/${id}/next_fixture`).catch(() => null),
     ]);
     const team = teamMeta || allTeams.find(t => t.teamId === id) || squad.team || {};
-    if (fixtures && fixtures.team_logo) team.logo_url = fixtures.team_logo;
+    if (fixtures && fixtures.team_logo && !team.logo_url) team.logo_url = fixtures.team_logo;
     renderProfile(profile, team, summary, matches, squad, fsLineup, seasonAvgs, fixtures);
   } catch(e) {
     profile.innerHTML = `<div class="section" style="color:var(--loss)">Erro ao carregar dados do time.</div>`;
