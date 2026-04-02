@@ -2,7 +2,7 @@ import datetime
 import threading
 import httpx
 
-from .sportdb import SPORTDB_BASE, HEADERS, COMPETITION_SLUG
+from .sportdb import SPORTDB_BASE, HEADERS, COMPETITION_SLUG, _smart_ttl
 
 SPORTDB_POSITION_GROUPS: dict[str, str] = {
     "GKP": "Goleiro",
@@ -49,7 +49,7 @@ def get_season_results(season: str = "2026") -> list[dict]:
         all_matches.extend(data)
         page += 1
 
-    _cache_set(key, all_matches, ttl_seconds=7200)
+    _cache_set(key, all_matches, ttl_seconds=_smart_ttl("results"))
     return all_matches
 
 
@@ -338,5 +338,5 @@ def get_player_season_stats(
             "clean_sheet_rate": clean_sheet_rate,
         })
 
-    _cache_set(key, result, ttl_seconds=7200)
+    _cache_set(key, result, ttl_seconds=_smart_ttl("results"))
     return result

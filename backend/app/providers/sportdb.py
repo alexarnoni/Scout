@@ -14,19 +14,32 @@ _cache: dict = {}
 _cache_lock = threading.Lock()
 
 
-def _get_cache_ttl() -> int:
+def _smart_ttl(data_type: str) -> int:
+    """TTL inteligente baseado no tipo de dado e horário BRT."""
     now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=-3)))
-    match_days = {0, 1, 2, 3, 5, 6}  # seg, ter, qua, sex, sáb, dom
-    if now.weekday() in match_days and now.hour >= 23:
-        return 1800
-    return 7200
+    hour = now.hour
+    is_match_window = 14 <= hour <= 23
+
+    if data_type == "standings":
+        return 300 if is_match_window else 1800
+    if data_type == "results":
+        return 300 if is_match_window else 3600
+    if data_type == "fixtures":
+        return 7200
+    if data_type == "match_stats":
+        return 86400
+    if data_type == "averages":
+        return 600 if is_match_window else 3600
+    if data_type == "player":
+        return 86400
+    return 1800
 
 
-def _cached_get(key: str, fetch_fn):
+def _cached_get(key: str, fetch_fn, data_type: str = "results"):
     with _cache_lock:
         entry = _cache.get(key)
         now = datetime.datetime.now()
-        if entry and (now - entry['ts']).total_seconds() < _get_cache_ttl():
+        if entry and (now - entry['ts']).total_seconds() < _smart_ttl(data_type):
             return entry['data']
         data = fetch_fn()
         _cache[key] = {'data': data, 'ts': now}
@@ -34,7 +47,7 @@ def _cached_get(key: str, fetch_fn):
 
 
 def get_standings(season: str = "2026") -> list[dict]:
-    return _cached_get(f'standings_{season}', lambda: _fetch_standings(season))
+    return _cached_get(f'standings_{season}', lambda: _fetch_standings(season), data_type="standings")
 
 
 def _fetch_standings(season: str = "2026") -> list[dict]:
@@ -45,7 +58,7 @@ def _fetch_standings(season: str = "2026") -> list[dict]:
 
 
 def get_season_results(season: str = "2026", page: int = 1) -> list[dict]:
-    return _cached_get(f'results_{season}_{page}', lambda: _fetch_results(season, page))
+    return _cached_get(f'results_{season}_{page}', lambda: _fetch_results(season, page), data_type="results")
 
 
 def _fetch_results(season: str = "2026", page: int = 1) -> list[dict]:
@@ -56,7 +69,7 @@ def _fetch_results(season: str = "2026", page: int = 1) -> list[dict]:
 
 
 def get_season_fixtures(season: str = "2026", page: int = 1) -> list[dict]:
-    return _cached_get(f'fixtures_{season}_{page}', lambda: _fetch_fixtures(season, page))
+    return _cached_get(f'fixtures_{season}_{page}', lambda: _fetch_fixtures(season, page), data_type="fixtures")
 
 
 def _fetch_fixtures(season: str = "2026", page: int = 1) -> list[dict]:
@@ -117,11 +130,11 @@ def _fetch_match_stats(event_id: str) -> list[dict]:
 
 
 def get_match_stats(event_id: str) -> list[dict]:
-    return _cached_get(f'stats_{event_id}', lambda: _fetch_match_stats(event_id))
+    return _cached_get(f'stats_{event_id}', lambda: _fetch_match_stats(event_id), data_type="match_stats")
 
 
 def get_team_season_averages(team_id: str, season: str = "2026") -> dict:
-    return _cached_get(f'averages_{team_id}_{season}', lambda: _fetch_team_averages(team_id, season))
+    return _cached_get(f'averages_{team_id}_{season}', lambda: _fetch_team_averages(team_id, season), data_type="averages")
 
 
 def _fetch_team_averages(team_id: str, season: str = "2026") -> dict:
@@ -182,7 +195,7 @@ def get_last_match_event_id(team_name_url: str, season: str = "2026") -> Optiona
 
 
 def get_player_profile(player_slug: str, player_id: str) -> dict:
-    return _cached_get(f'player_{player_id}', lambda: _fetch_player_profile(player_slug, player_id))
+    return _cached_get(f'player_{player_id}', lambda: _fetch_player_profile(player_slug, player_id), data_type="player")
 
 
 def _fetch_player_profile(player_slug: str, player_id: str) -> dict:
