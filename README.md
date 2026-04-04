@@ -125,16 +125,16 @@ O modelo de scout avalia jogadores por posição com métricas **normalizadas po
 ## Decisões técnicas
 
 **Por que SportDB em vez da ESPN?**
-O projeto começou consumindo endpoints informais da ESPN — funcionava, mas era frágil: sem autenticação, sem garantia de estabilidade e sujeito a quebrar sem aviso. A migração para a SportDB resolveu isso com uma API documentada, autenticada via `X-API-Key` e com endpoints dedicados para lineups, player stats e standings. O custo foi refatorar os providers e os scripts de seed, mas o resultado é uma base muito mais confiável para um portfólio sério.
+O projeto começou consumindo endpoints informais da ESPN. Funcionava, mas era frágil: sem autenticação, sem garantia de estabilidade e sujeito a quebrar sem aviso. A migração para a SportDB resolveu isso com uma API documentada, autenticada via `X-API-Key` e com endpoints dedicados para lineups, player stats e standings. O custo foi refatorar os providers e os scripts de seed, mas o resultado é uma base muito mais confiável para um portfólio sério.
 
 **Por que o ranking é stateless?**
-O endpoint `/scout/ranking` não toca o banco de dados — ele busca resultados e stats diretamente da SportDB em tempo real, calcula os scores na memória e retorna. A alternativa seria persistir as métricas de cada jogador no PostgreSQL e manter um job de atualização, mas isso adiciona complexidade de sincronização sem benefício real nessa fase. Com cache em memória (2h para stats de temporada), a performance é boa e o modelo fica simples de iterar.
+O endpoint `/scout/ranking` não toca o banco de dados. Ele busca resultados e stats diretamente da SportDB em tempo real, calcula os scores na memória e retorna. A alternativa seria persistir as métricas de cada jogador no PostgreSQL e manter um job de atualização, mas isso adiciona complexidade de sincronização sem benefício real nessa fase. Com cache em memória de 2h para stats de temporada, a performance é boa e o modelo fica simples de iterar.
 
 **Por que Cloudflare Pages para o frontend?**
-O frontend é 100% estático — HTML, CSS e JS vanilla, sem build step. O Cloudflare Pages faz deploy automático a cada `git push` na pasta `frontend/`, com CDN global e SSL incluso. Não faz sentido subir um servidor só para servir arquivos estáticos quando isso é resolvido em zero configuração.
+O frontend é 100% estático: HTML, CSS e JS vanilla, sem build step. O Cloudflare Pages faz deploy automático a cada `git push`na pasta `frontend/`, com CDN global e SSL incluso. Não faz sentido subir um servidor só para servir arquivos estáticos quando isso é resolvido em zero configuração.
 
 **Por que vanilla JS em vez de React/Vue?**
-O projeto tem uma única SPA com navegação simples entre três páginas. Adicionar um framework traria build tooling, bundler e complexidade de estado para um problema que `fetch` + `innerHTML` resolve com 200 linhas. A escolha mantém o foco nos dados — que é o ponto do portfólio — e não na infraestrutura de frontend.
+O projeto tem uma única SPA com navegação simples entre três páginas. Adicionar um framework traria build tooling, bundler e complexidade de estado para um problema que `fetch` + `innerHTML` resolve com 200 linhas. A escolha mantém o foco nos dados, que é o ponto do portfólio, e não na infraestrutura de frontend.
 
 ---
 
