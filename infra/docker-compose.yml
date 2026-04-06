@@ -11,5 +11,15 @@ services:
     volumes:
       - scout_pgdata:/var/lib/postgresql/data
 
+  backend:
+    build: ../backend
+    container_name: scout-backend
+    env_file: .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      - db
+    restart: always
+
 volumes:
   scout_pgdata:
