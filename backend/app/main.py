@@ -170,7 +170,7 @@ def get_match_or_404(db: Session, match_id: int) -> Match:
 
 @app.get("/teams/{team_id}/top_scorers", response_model=TopScorersResponse)
 def get_top_scorers(
-    team_id: int,
+    team_id: str,
     db: Session = Depends(get_db),
 ) -> TopScorersResponse:
     get_team_or_404(db, team_id)

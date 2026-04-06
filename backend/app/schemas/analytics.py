@@ -91,5 +91,5 @@ class TopScorerItem(BaseModel):
 class TopScorersResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    team_id: int
+    team_id: str
     top_scorers: list[TopScorerItem]
