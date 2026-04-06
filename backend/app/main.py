@@ -169,10 +169,21 @@ def get_match_or_404(db: Session, match_id: int) -> Match:
 
 
 def _aggregate_team_player_stats(team_id: str) -> list[dict]:
-    from app.providers.sportdb_scout import get_player_season_stats
+    from app.providers.sportdb_scout import get_player_season_stats, get_season_results
 
+    results = get_season_results()
+    team_name = None
+    for m in results:
+        if m.get("homeParticipantIds") == team_id:
+            team_name = m.get("homeName")
+            break
+        if m.get("awayParticipantIds") == team_id:
+            team_name = m.get("awayName")
+            break
+    if not team_name:
+        return []
     all_players = get_player_season_stats(season="2026", min_minutes=0)
-    return [p for p in all_players if p.get("team_id") == team_id]
+    return [p for p in all_players if p.get("team_name") == team_name]
 
 
 @app.get("/teams/{team_id}/top_scorers", response_model=TopScorersResponse)
