@@ -320,6 +320,17 @@ svg#field { display: block; width: 100%; height: auto; }
 .radar-wrap { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; max-width: 420px; margin-top: 16px; }
 #team-radar { max-height: 220px; width: 100%; display: block; }
 
+/* ── TEAM SEASON STATS ── */
+.stats-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.stats-stat-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid var(--border-light);
+}
+.stats-stat-row:last-child { border-bottom: none; }
+.stats-stat-name { font-size: 13px; color: var(--text-secondary); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stats-stat-value { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-left: 12px; white-space: nowrap; }
+.stats-stat-matches { font-size: 11px; color: var(--text-muted); margin-left: 8px; white-space: nowrap; }
+
 /* ── PULL TO REFRESH ── */
 #ptr-indicator {
   display: none; position: absolute;
@@ -559,6 +570,7 @@ async function selectTeam(id, teamMeta) {
     const team = teamMeta || allTeams.find(t => t.teamId === id) || squad.team || {};
     if (fixtures && fixtures.team_logo && !team.logo_url) team.logo_url = fixtures.team_logo;
     renderProfile(profile, team, summary, matches, squad, fsLineup, seasonAvgs, fixtures);
+    loadTeamStats('scorers');
   } catch(e) {
     profile.innerHTML = `<div class="section" style="color:var(--loss)">Erro ao carregar dados do time.</div>`;
     console.error(e);
@@ -809,7 +821,20 @@ const analysisHTML = `
         </div>
       </div>
     </div>`;
-  })()}`;
+  })()}
+
+  <!-- STATS DA TEMPORADA -->
+  <div class="section" id="team-stats-section">
+    <div class="section-label">Stats da Temporada</div>
+    <div class="stats-tabs">
+      <button class="stats-tab active" onclick="loadTeamStats('scorers')">Artilheiros</button>
+      <button class="stats-tab" onclick="loadTeamStats('assists')">Assistências</button>
+      <button class="stats-tab" onclick="loadTeamStats('ratings')">Rating</button>
+      <button class="stats-tab" onclick="loadTeamStats('minutes')">Minutos</button>
+      <button class="stats-tab" onclick="loadTeamStats('cards')">Cartões</button>
+    </div>
+    <div id="team-stats-list"><span style="color:var(--text-muted);font-size:12px">Carregando...</span></div>
+  </div>`;
 
   // radar chart
   const avgs = seasonAvgs || {};
@@ -1152,10 +1177,78 @@ async function loadGarimpo(container, position = 'Todos') {
 
 // ── stats tab toggle ─────────────────────────────────────────────────────
 function switchStatsTab(btn, tab) {
-  document.querySelectorAll('.stats-tab').forEach(b => b.classList.remove('active'));
+  btn.closest('.stats-toggle').querySelectorAll('.stats-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('stats-season').style.display = tab === 'season' ? 'block' : 'none';
   document.getElementById('stats-last').style.display = tab === 'last' ? 'block' : 'none';
+}
+
+// ── team season stats tabs ────────────────────────────────────────────────
+const _teamStatsCache = {};
+
+async function loadTeamStats(type) {
+  const section = document.getElementById('team-stats-section');
+  if (!section) return;
+
+  section.querySelectorAll('.stats-tab').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('onclick') === `loadTeamStats('${type}')`)
+  );
+
+  const listEl = document.getElementById('team-stats-list');
+  if (!listEl) return;
+
+  const cacheKey = `${selectedTeamId}_${type}`;
+  if (_teamStatsCache[cacheKey]) {
+    listEl.innerHTML = _teamStatsCache[cacheKey];
+    return;
+  }
+
+  listEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Carregando...</span>';
+
+  const ENDPOINTS = {
+    scorers: 'top_scorers',
+    assists:  'top_assists',
+    ratings:  'top_ratings',
+    minutes:  'top_minutes',
+    cards:    'top_yellow_cards',
+  };
+  const LABELS = {
+    scorers: 'Gols',
+    assists:  'Assist.',
+    ratings:  'Rating',
+    minutes:  'Min',
+    cards:    'Amarelos',
+  };
+
+  try {
+    const data = await api(`/teams/${selectedTeamId}/${ENDPOINTS[type]}`);
+    // top_scorers retorna { team_id, top_scorers: [...] }; demais retornam lista direta
+    const items = Array.isArray(data) ? data : (data.top_scorers || []);
+
+    if (!items.length) {
+      const html = '<span style="color:var(--text-muted);font-size:12px">Sem dados disponíveis.</span>';
+      _teamStatsCache[cacheKey] = html;
+      listEl.innerHTML = html;
+      return;
+    }
+
+    const label = LABELS[type];
+    const html = items.map(item => {
+      const raw = item.value ?? item.goals ?? 0;
+      const value = type === 'ratings' ? parseFloat(raw).toFixed(2) : raw;
+      return `<div class="stats-stat-row">
+        <span class="stats-stat-name">${item.name}</span>
+        <span class="stats-stat-value">${value}&nbsp;<span style="font-size:10px;font-weight:400;color:var(--text-muted)">${label}</span></span>
+        <span class="stats-stat-matches">${item.matches_played} jg</span>
+      </div>`;
+    }).join('');
+
+    _teamStatsCache[cacheKey] = html;
+    listEl.innerHTML = html;
+  } catch(e) {
+    listEl.innerHTML = '<span style="color:var(--negative);font-size:12px">Erro ao carregar dados.</span>';
+    console.error(e);
+  }
 }
 
 // ── player modal ──────────────────────────────────────────────────────────

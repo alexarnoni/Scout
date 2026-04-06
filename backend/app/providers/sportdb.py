@@ -145,6 +145,22 @@ def get_match_details(event_id: str) -> dict:
     return _cached_get(f'details_{event_id}', lambda: _fetch_match_details(event_id), data_type="match_stats")
 
 
+def _fetch_match_playerstats(event_id: str) -> list[dict]:
+    url = f"{SPORTDB_BASE}/api/flashscore/match/{event_id}/playerstats"
+    r = httpx.get(url, headers=HEADERS, timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+
+def get_match_playerstats(event_id: str) -> list[dict]:
+    """GET /api/flashscore/match/{eventId}/playerstats — retorna rating por jogador."""
+    return _cached_get(
+        f'playerstats_{event_id}',
+        lambda: _fetch_match_playerstats(event_id),
+        data_type="match_stats",
+    )
+
+
 def get_team_season_averages(team_id: str, season: str = "2026") -> dict:
     return _cached_get(f'averages_{team_id}_{season}', lambda: _fetch_team_averages(team_id, season), data_type="averages")
 

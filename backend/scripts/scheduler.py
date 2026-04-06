@@ -13,6 +13,7 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import time
 import traceback
 from pathlib import Path
 
@@ -32,7 +33,7 @@ from sqlalchemy.orm import sessionmaker  # noqa: E402
 from scripts.sync_date import build_sportdb_index, process_date_matches  # noqa: E402
 from app.models.match import Match  # noqa: E402
 from app.models.player_match_stats import PlayerMatchStats  # noqa: E402
-from app.services.goal_events import ingest_match_events  # noqa: E402
+from app.services.goal_events import ingest_match_events, ingest_match_player_stats  # noqa: E402
 from sqlalchemy import select, exists  # noqa: E402
 
 logging.basicConfig(
@@ -171,6 +172,85 @@ def _ingest_goal_events_job_with_guard() -> None:
         logger.error("ingest_goal_events_job failed:\n%s", traceback.format_exc())
 
 
+def ingest_player_stats_job() -> None:
+    """
+    Ingestão completa de stats de jogadores (gols, assistências, cartões,
+    minutos, rating) para partidas finalizadas com sportdb_event_id preenchido
+    e sem registros em player_match_stats.
+
+    Substitui ingest_goal_events_job no agendamento — é um superset funcional.
+    Respeita rate limit de 3 RPS via sleep entre chamadas.
+    """
+    pending_subq = (
+        select(PlayerMatchStats.match_id)
+        .correlate(Match)
+    )
+
+    stmt = (
+        select(Match.id, Match.sportdb_event_id)
+        .where(Match.status == "finished")
+        .where(Match.sportdb_event_id.isnot(None))
+        .where(~exists(pending_subq.where(PlayerMatchStats.match_id == Match.id)))
+        .distinct()
+    )
+
+    processed = 0
+    errors = 0
+
+    with SessionLocal() as db:
+        rows = db.execute(stmt).all()
+        logger.info("ingest_player_stats_job: %d partida(s) pendente(s)", len(rows))
+
+        for match_id, sportdb_event_id in rows:
+            try:
+                # Re-fetch dentro do loop para evitar objeto expirado após commit
+                match = db.execute(
+                    select(Match).where(Match.id == match_id)
+                ).scalar_one_or_none()
+
+                if match is None:
+                    logger.warning("Match %s não encontrado, pulando", match_id)
+                    continue
+
+                result = ingest_match_player_stats(db, match)
+                db.commit()
+                processed += 1
+                logger.info(
+                    "Partida %s ingerida: players=%s goals=%s assists=%s cards=%s created=%s",
+                    match_id,
+                    result["players_processed"],
+                    result["goals_ingested"],
+                    result["assists_ingested"],
+                    result["cards_ingested"],
+                    result["created_players"],
+                )
+            except Exception:
+                db.rollback()
+                errors += 1
+                logger.error(
+                    "Erro ao ingerir partida %s (sportdb_event_id=%s):\n%s",
+                    match_id,
+                    sportdb_event_id,
+                    traceback.format_exc(),
+                )
+
+            time.sleep(0.34)  # respeita rate limit de 3 RPS
+
+    logger.info(
+        "ingest_player_stats_job concluído: processadas=%d erros=%d",
+        processed,
+        errors,
+    )
+
+
+def _ingest_player_stats_job_with_guard() -> None:
+    """Wrapper que captura exceções para não matar o scheduler."""
+    try:
+        ingest_player_stats_job()
+    except Exception:
+        logger.error("ingest_player_stats_job failed:\n%s", traceback.format_exc())
+
+
 def main() -> None:
     scheduler = BlockingScheduler(timezone=_TIMEZONE)
 
@@ -179,7 +259,7 @@ def main() -> None:
     scheduler.add_job(_job_with_guard, trigger, id="sync_yesterday")
 
     ingest_trigger = CronTrigger(hour=1, minute=0, timezone=_TIMEZONE)
-    scheduler.add_job(_ingest_goal_events_job_with_guard, ingest_trigger, id="ingest_goal_events")
+    scheduler.add_job(_ingest_player_stats_job_with_guard, ingest_trigger, id="ingest_player_stats")
 
     logger.info("Scheduler iniciado. Sync agendado para 00:30 (America/Sao_Paulo).")
     scheduler.start()

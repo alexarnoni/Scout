@@ -93,3 +93,12 @@ class TopScorersResponse(BaseModel):
 
     team_id: str
     top_scorers: list[TopScorerItem]
+
+
+class TopStatItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    player_id: int
+    name: str
+    value: float
+    matches_played: int

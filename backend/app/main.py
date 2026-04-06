@@ -35,6 +35,7 @@ from app.schemas.analytics import (
     TeamTimeSeriesPoint,
     TopScorerItem,
     TopScorersResponse,
+    TopStatItem,
 )
 from app.schemas.player_analytics import (
     PlayerAnalyticsSummary,
@@ -209,6 +210,124 @@ def get_top_scorers(
     ]
 
     return TopScorersResponse(team_id=team_id, top_scorers=top_scorers)
+
+
+@app.get("/teams/{team_id}/top_assists", response_model=list[TopStatItem])
+def get_top_assists(
+    team_id: int,
+    db: Session = Depends(get_db),
+) -> list[TopStatItem]:
+    get_team_or_404(db, team_id)
+    rows = db.execute(
+        select(
+            Player.id.label("player_id"),
+            Player.name.label("name"),
+            func.sum(func.coalesce(PlayerMatchStats.assists, 0)).label("value"),
+            func.count(PlayerMatchStats.id).label("matches_played"),
+        )
+        .join(Player, Player.id == PlayerMatchStats.player_id)
+        .where(PlayerMatchStats.team_id == team_id)
+        .group_by(Player.id, Player.name)
+        .having(func.sum(func.coalesce(PlayerMatchStats.assists, 0)) > 0)
+        .order_by(
+            func.sum(func.coalesce(PlayerMatchStats.assists, 0)).desc(),
+            Player.name.asc(),
+        )
+        .limit(5)
+    ).all()
+    return [
+        TopStatItem(player_id=r.player_id, name=r.name, value=r.value, matches_played=r.matches_played)
+        for r in rows
+    ]
+
+
+@app.get("/teams/{team_id}/top_ratings", response_model=list[TopStatItem])
+def get_top_ratings(
+    team_id: int,
+    db: Session = Depends(get_db),
+) -> list[TopStatItem]:
+    get_team_or_404(db, team_id)
+    rows = db.execute(
+        select(
+            Player.id.label("player_id"),
+            Player.name.label("name"),
+            func.avg(PlayerMatchStats.rating).label("value"),
+            func.count(PlayerMatchStats.id).label("matches_played"),
+        )
+        .join(Player, Player.id == PlayerMatchStats.player_id)
+        .where(PlayerMatchStats.team_id == team_id)
+        .where(PlayerMatchStats.rating.isnot(None))
+        .group_by(Player.id, Player.name)
+        .having(func.count(PlayerMatchStats.id) >= 3)
+        .order_by(func.avg(PlayerMatchStats.rating).desc(), Player.name.asc())
+        .limit(5)
+    ).all()
+    return [
+        TopStatItem(
+            player_id=r.player_id,
+            name=r.name,
+            value=round(float(r.value), 2),
+            matches_played=r.matches_played,
+        )
+        for r in rows
+    ]
+
+
+@app.get("/teams/{team_id}/top_minutes", response_model=list[TopStatItem])
+def get_top_minutes(
+    team_id: int,
+    db: Session = Depends(get_db),
+) -> list[TopStatItem]:
+    get_team_or_404(db, team_id)
+    rows = db.execute(
+        select(
+            Player.id.label("player_id"),
+            Player.name.label("name"),
+            func.sum(func.coalesce(PlayerMatchStats.minutes, 0)).label("value"),
+            func.count(PlayerMatchStats.id).label("matches_played"),
+        )
+        .join(Player, Player.id == PlayerMatchStats.player_id)
+        .where(PlayerMatchStats.team_id == team_id)
+        .group_by(Player.id, Player.name)
+        .order_by(
+            func.sum(func.coalesce(PlayerMatchStats.minutes, 0)).desc(),
+            Player.name.asc(),
+        )
+        .limit(5)
+    ).all()
+    return [
+        TopStatItem(player_id=r.player_id, name=r.name, value=r.value, matches_played=r.matches_played)
+        for r in rows
+    ]
+
+
+@app.get("/teams/{team_id}/top_yellow_cards", response_model=list[TopStatItem])
+def get_top_yellow_cards(
+    team_id: int,
+    db: Session = Depends(get_db),
+) -> list[TopStatItem]:
+    get_team_or_404(db, team_id)
+    rows = db.execute(
+        select(
+            Player.id.label("player_id"),
+            Player.name.label("name"),
+            func.sum(func.coalesce(PlayerMatchStats.yellow_cards, 0)).label("value"),
+            func.count(PlayerMatchStats.id).label("matches_played"),
+        )
+        .join(Player, Player.id == PlayerMatchStats.player_id)
+        .where(PlayerMatchStats.team_id == team_id)
+        .group_by(Player.id, Player.name)
+        .having(func.sum(func.coalesce(PlayerMatchStats.yellow_cards, 0)) > 0)
+        .order_by(
+            func.sum(func.coalesce(PlayerMatchStats.yellow_cards, 0)).desc(),
+            Player.name.asc(),
+        )
+        .limit(5)
+    ).all()
+    return [
+        TopStatItem(player_id=r.player_id, name=r.name, value=r.value, matches_played=r.matches_played)
+        for r in rows
+    ]
 
 
 @app.get("/teams/{team_id}/last_lineup", response_model=list[PlayerOut])
