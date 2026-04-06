@@ -17,7 +17,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # All persistence logic lives in sync_date — import, don't duplicate
-from scripts.sync_date import process_date_matches
+from scripts.sync_date import build_sportdb_index, process_date_matches
 
 logger = logging.getLogger(__name__)
 
@@ -117,12 +117,14 @@ def main() -> None:
 
         with SessionLocal() as db:
             try:
+                sportdb_index = build_sportdb_index(date)
                 day_counters = process_date_matches(
                     db,
                     args.competition_id,
                     matches,
                     args.include_players,
                     args.verbose,
+                    sportdb_index=sportdb_index,
                 )
             except Exception as exc:
                 # Roll back this day and continue — don't abort the whole backfill.

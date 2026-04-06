@@ -22,6 +22,7 @@ class Match(Base, TimestampMixin, SourceIdsMixin):
     external_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     external_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     external_ids: Mapped[dict[str, str] | None] = mapped_column(JSON, nullable=True)
+    sportdb_event_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     home_team_id: Mapped[int] = mapped_column(
         ForeignKey("teams.id"), nullable=False
     )

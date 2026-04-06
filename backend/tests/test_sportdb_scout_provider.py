@@ -25,11 +25,17 @@ def _make_lineup(players_home: list[dict], players_away: list[dict] | None = Non
     return [
         {
             "group": "Starting XI",
-            "homeTeam": {"participantId": "t1", "participantName": "Home FC"},
-            "awayTeam": {"participantId": "t2", "participantName": "Away FC"},
             "home": players_home,
             "away": players_away or [],
         }
+    ]
+
+
+def _make_teams(home_id: str = "t1", away_id: str = "t2") -> list[dict]:
+    """Monta estrutura mínima de teams_data."""
+    return [
+        {"id": home_id, "name": "Home FC", "side": "home"},
+        {"id": away_id, "name": "Away FC", "side": "away"},
     ]
 
 
@@ -67,7 +73,7 @@ class TestP90:
 class TestMergeLineupStats:
     def test_player_without_stats_gets_zeros(self):
         lineup = _make_lineup([_player("p1")])
-        merged = _merge_lineup_stats(lineup, {}, event_id="e1")
+        merged = _merge_lineup_stats(lineup, [], _make_teams(), event_id="e1")
         assert len(merged) == 1
         p = merged[0]
         assert p["goals"] == 0
@@ -79,10 +85,13 @@ class TestMergeLineupStats:
 
     def test_player_with_stats_gets_values(self):
         lineup = _make_lineup([_player("p1")])
-        stats = {"p1": {"goals": 2, "assists": 1, "shots": 5, "shots_on_target": 3,
-                        "fouls_committed": 1, "yellow_cards": 0, "red_cards": 0,
-                        "saves": 0, "xg": 0.8, "rating": 7.5}}
-        merged = _merge_lineup_stats(lineup, stats, event_id="e1")
+        # Nova estrutura: lista de {playerId, statsKey, numericValue}
+        stats = [
+            {"playerId": "p1", "statsKey": "goals", "numericValue": 2},
+            {"playerId": "p1", "statsKey": "assistsGoal", "numericValue": 1},
+            {"playerId": "p1", "statsKey": "shotsTotal", "numericValue": 5},
+        ]
+        merged = _merge_lineup_stats(lineup, stats, _make_teams(), event_id="e1")
         p = merged[0]
         assert p["goals"] == 2
         assert p["assists"] == 1
@@ -90,28 +99,28 @@ class TestMergeLineupStats:
 
     def test_stats_as_list(self):
         lineup = _make_lineup([_player("p1")])
-        stats = [{"participantId": "p1", "goals": 3, "assists": 0, "shots": 4,
-                  "shots_on_target": 2, "fouls_committed": 0, "yellow_cards": 0,
-                  "red_cards": 0, "saves": 0, "xg": 1.0, "rating": 8.0}]
-        merged = _merge_lineup_stats(lineup, stats, event_id="e1")
+        stats = [
+            {"playerId": "p1", "statsKey": "goals", "numericValue": 3},
+        ]
+        merged = _merge_lineup_stats(lineup, stats, _make_teams(), event_id="e1")
         assert merged[0]["goals"] == 3
 
     def test_minutes_from_field(self):
-        lineup = _make_lineup([_player("p1", minutes=60)])
-        merged = _merge_lineup_stats(lineup, {}, event_id="e1")
+        lineup = _make_lineup([_player("p1")])
+        # matchMinutesPlayed via stats
+        stats = [{"playerId": "p1", "statsKey": "matchMinutesPlayed", "numericValue": 60}]
+        merged = _merge_lineup_stats(lineup, stats, _make_teams(), event_id="e1")
         assert merged[0]["minutes"] == 60
 
     def test_substitute_default_minutes(self):
         lineup = [
             {
                 "group": "Substitutes",
-                "homeTeam": {"participantId": "t1", "participantName": "Home FC"},
-                "awayTeam": {"participantId": "t2", "participantName": "Away FC"},
                 "home": [_player("p2")],
                 "away": [],
             }
         ]
-        merged = _merge_lineup_stats(lineup, {}, event_id="e1")
+        merged = _merge_lineup_stats(lineup, [], _make_teams(), event_id="e1")
         assert merged[0]["minutes"] == 30
 
 
@@ -506,7 +515,7 @@ def test_property7_merge_one_record_per_player(player_ids):
     lineup = _make_lineup(
         [_player(pid) for pid in player_ids]
     )
-    merged = _merge_lineup_stats(lineup, {}, event_id="ev1")
+    merged = _merge_lineup_stats(lineup, [], _make_teams(), event_id="ev1")
 
     result_ids = [r["player_id"] for r in merged]
     assert len(result_ids) == len(player_ids)

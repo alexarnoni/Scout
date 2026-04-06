@@ -3,7 +3,7 @@ import asyncio
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.router import api_router
@@ -33,6 +33,8 @@ from app.schemas.analytics import (
     TeamAnalyticsSummary,
     TeamRadar,
     TeamTimeSeriesPoint,
+    TopScorerItem,
+    TopScorersResponse,
 )
 from app.schemas.player_analytics import (
     PlayerAnalyticsSummary,
@@ -164,6 +166,49 @@ def get_match_or_404(db: Session, match_id: int) -> Match:
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
     return match
+
+
+@app.get("/teams/{team_id}/top_scorers", response_model=TopScorersResponse)
+def get_top_scorers(
+    team_id: int,
+    db: Session = Depends(get_db),
+) -> TopScorersResponse:
+    get_team_or_404(db, team_id)
+
+    rows = db.execute(
+        select(
+            Player.id.label("player_id"),
+            Player.name.label("name"),
+            func.sum(func.coalesce(PlayerMatchStats.goals, 0)).label("goals"),
+            func.sum(func.coalesce(PlayerMatchStats.assists, 0)).label("assists"),
+            func.count(PlayerMatchStats.id).label("matches_played"),
+        )
+        .join(Player, Player.id == PlayerMatchStats.player_id)
+        .where(
+            PlayerMatchStats.team_id == team_id,
+        )
+        .group_by(Player.id, Player.name)
+        .having(func.sum(func.coalesce(PlayerMatchStats.goals, 0)) > 0)
+        .order_by(
+            func.sum(func.coalesce(PlayerMatchStats.goals, 0)).desc(),
+            func.sum(func.coalesce(PlayerMatchStats.assists, 0)).desc(),
+            Player.name.asc(),
+        )
+        .limit(5)
+    ).all()
+
+    top_scorers = [
+        TopScorerItem(
+            player_id=row.player_id,
+            name=row.name,
+            goals=row.goals,
+            assists=row.assists or 0,
+            matches_played=row.matches_played,
+        )
+        for row in rows
+    ]
+
+    return TopScorersResponse(team_id=team_id, top_scorers=top_scorers)
 
 
 @app.get("/teams/{team_id}/last_lineup", response_model=list[PlayerOut])
@@ -384,6 +429,77 @@ def get_team_matches(team_id: str) -> list[dict]:
         })
     matches.sort(key=lambda x: x.get("date", ""))
     return matches
+
+
+def _parse_flashscore_participant_url(participant_url: str) -> tuple[str, str] | None:
+    clean = (participant_url or "").replace("/player/", "").strip("/")
+    if not clean:
+        return None
+    parts = clean.split("/")
+    if len(parts) < 2:
+        return None
+    return parts[0], parts[1]
+
+
+def _extract_matches_played_2026(profile: dict) -> int | None:
+    league_2026 = next(
+        (
+            c
+            for c in profile.get("careers", {}).get("league", [])
+            if c.get("season") == "2026" and c.get("competitionSlug") == "serie-a-betano"
+        ),
+        None,
+    )
+    if not league_2026:
+        return None
+
+    matches_played = next(
+        (s.get("value") for s in league_2026.get("stats", []) if s.get("name") == "Matches Played"),
+        None,
+    )
+    if matches_played is None:
+        return None
+
+    try:
+        return int(matches_played)
+    except (TypeError, ValueError):
+        try:
+            return int(float(str(matches_played).replace(",", ".")))
+        except (TypeError, ValueError):
+            return None
+
+
+def _get_db_matches_played_2026_by_participant_id(
+    db: Session,
+    participant_ids: set[str],
+) -> dict[str, int]:
+    if not participant_ids:
+        return {}
+
+    sportdb_id = Player.external_ids[("sportdb")].as_string()
+    rows = db.execute(
+        select(
+            sportdb_id.label("sportdb_id"),
+            func.count(PlayerMatchStats.id).label("matches_played"),
+        )
+        .join(Player, Player.id == PlayerMatchStats.player_id)
+        .join(Match, Match.id == PlayerMatchStats.match_id)
+        .join(Competition, Competition.id == Match.competition_id)
+        .where(
+            sportdb_id.in_(participant_ids),
+            or_(
+                Competition.season == "2026",
+                Competition.name.ilike("%2026%"),
+            ),
+        )
+        .group_by(sportdb_id)
+    ).all()
+
+    return {
+        str(row.sportdb_id): int(row.matches_played or 0)
+        for row in rows
+        if row.sportdb_id is not None
+    }
 
 
 @app.get("/teams/{team_id}/squad")
@@ -641,6 +757,7 @@ def get_competition_standings(db: Session = Depends(get_db)) -> list[dict]:
 @app.get("/teams/{team_id}/flashscore_lineup")
 def get_flashscore_lineup(
     team_id: str,
+    db: Session = Depends(get_db),
 ) -> dict:
     slug = team_id
     if not slug:
@@ -672,6 +789,38 @@ def get_flashscore_lineup(
 
     players = starters_group.get(side, [])
     bench_players = subs_group.get(side, [])
+
+    matches_played_2026_by_id: dict[str, int] = {}
+    missing_participant_ids: set[str] = set()
+
+    for p in players:
+        participant_id = str(p.get("participantId", "")).strip()
+        if not participant_id:
+            continue
+
+        parsed = _parse_flashscore_participant_url(str(p.get("participantUrl", "")))
+        matches_played = None
+        if parsed:
+            slug, pid = parsed
+            try:
+                profile = get_player_profile(slug, pid)
+                matches_played = _extract_matches_played_2026(profile)
+            except Exception:
+                matches_played = None
+
+        if matches_played is None:
+            missing_participant_ids.add(participant_id)
+        else:
+            matches_played_2026_by_id[participant_id] = matches_played
+
+    if missing_participant_ids:
+        matches_played_2026_by_id.update(
+            _get_db_matches_played_2026_by_participant_id(db, missing_participant_ids)
+        )
+
+    for p in players:
+        participant_id = str(p.get("participantId", "")).strip()
+        p["matches_played_2026"] = matches_played_2026_by_id.get(participant_id)
 
     formation = ""
     if players:

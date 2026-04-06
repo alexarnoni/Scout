@@ -916,12 +916,13 @@ function fieldSVG(starters) {
     const color = GROUP_COLOR[grp];
     const abbr = GROUP_ABBR[grp];
     const shortName = (p.participantSurname || p.participantName || '').substring(0, 10);
-    const shirtNum = p.participantNumber || '';
+    const matches2026 = p.matches_played_2026;
+    const seasonMatches = matches2026 == null || matches2026 === '' ? '—' : matches2026;
     const url = p.participantUrl || '';
 
     nodes += `
       <g class="p-circle" style="cursor:pointer" onclick="openPlayerModal('${url}')">
-        <text x="${x}" y="${y - 16}" text-anchor="middle" font-size="6" fill="#6b7a90">${shirtNum}</text>
+        <text x="${x}" y="${y - 16}" text-anchor="middle" font-size="6" fill="#6b7a90">${seasonMatches}</text>
         <circle cx="${x}" cy="${y}" r="11" fill="${color}" fill-opacity=".25" stroke="${color}" stroke-width="1.5"/>
         <text x="${x}" y="${y}" class="p-abbr" fill="${color}">${abbr}</text>
         <text x="${x}" y="${y + 18}" class="p-name">${shortName}</text>

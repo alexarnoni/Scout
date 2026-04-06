@@ -15,6 +15,7 @@ load_dotenv(ROOT_ENV)
 from app.core.config import DATABASE_URL
 from app.models import Player, Team
 from app.providers import ESPNProvider
+from app.providers.sportdb import get_season_results as sportdb_get_season_results, TEAM_SLUG_MAP
 
 from app.services.persistence import (
     extract_xg,
@@ -32,12 +33,43 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 _SOURCE = "espn"
 
 
+def build_sportdb_index(sync_date: datetime.date) -> dict[tuple[str, str], str]:
+    """Constrói índice {(home_slug, away_slug): eventId} para a data informada.
+
+    Cruza resultados do SportDB com partidas ESPN pelo par de slugs de time e data.
+    Retorna dict vazio se a API falhar (não interrompe o fluxo principal).
+    """
+    try:
+        results = sportdb_get_season_results()
+        date_str = sync_date.isoformat()  # "YYYY-MM-DD"
+        index: dict[tuple[str, str], str] = {}
+        for match in results:
+            # startTimestamp pode ser epoch ou string ISO
+            ts = match.get("startTimestamp") or match.get("startTime") or ""
+            if isinstance(ts, int):
+                match_date = datetime.datetime.utcfromtimestamp(ts).date().isoformat()
+            else:
+                match_date = str(ts)[:10]
+            if match_date != date_str:
+                continue
+            home_slug = match.get("homeParticipantNameUrl", "")
+            away_slug = match.get("awayParticipantNameUrl", "")
+            event_id = match.get("eventId") or match.get("id")
+            if home_slug and away_slug and event_id:
+                index[(home_slug, away_slug)] = str(event_id)
+        return index
+    except Exception:
+        logger.warning("Não foi possível construir índice SportDB — sportdb_event_id não será preenchido")
+        return {}
+
+
 def process_date_matches(
     db,
     competition_id: int,
     matches: list[dict],
     include_players: bool,
     verbose: bool,
+    sportdb_index: dict | None = None,
 ) -> dict:
     """Persist a list of ESPN match payloads for one date into an open db session.
 
@@ -62,6 +94,15 @@ def process_date_matches(
     for match_payload in matches:
         # ESPN doesn't provide reliable round numbers — set explicitly to None
         match_payload["round"] = None
+
+        # Tentar resolver sportdb_event_id cruzando com o índice SportDB
+        if sportdb_index:
+            home_slug = TEAM_SLUG_MAP.get(match_payload.get("home_team", ""))
+            away_slug = TEAM_SLUG_MAP.get(match_payload.get("away_team", ""))
+            if home_slug and away_slug:
+                sportdb_event_id = sportdb_index.get((home_slug, away_slug))
+                if sportdb_event_id:
+                    match_payload["sportdb_event_id"] = sportdb_event_id
 
         match, created = upsert_match(db, competition_id, _SOURCE, match_payload)
         if created:
@@ -226,9 +267,13 @@ def main() -> None:
     matches = provider.fetch_matches_by_date(sync_date)
     logger.info("Provider returned %d match(es) for %s", len(matches), sync_date)
 
+    sportdb_index = build_sportdb_index(sync_date)
+    logger.info("SportDB index built: %d entries for %s", len(sportdb_index), sync_date)
+
     with SessionLocal() as db:
         counters = process_date_matches(
-            db, args.competition_id, matches, include_players, args.verbose
+            db, args.competition_id, matches, include_players, args.verbose,
+            sportdb_index=sportdb_index,
         )
 
         if args.dry_run:

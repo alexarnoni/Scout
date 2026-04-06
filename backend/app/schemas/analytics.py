@@ -76,3 +76,20 @@ class TeamAnalyticsSummary(BaseModel):
     averages: TeamMetricAverages
     trend: TeamTrend | None
     last_matches: list[int]
+
+
+class TopScorerItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    player_id: int
+    name: str
+    goals: int
+    assists: int
+    matches_played: int
+
+
+class TopScorersResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    team_id: int
+    top_scorers: list[TopScorerItem]

@@ -132,6 +132,7 @@ def upsert_match(db, competition_id: int, source: str, payload: dict) -> tuple[M
             external_source=source,
             external_id=external_id,
             external_ids={source: external_id} if external_id else None,
+            sportdb_event_id=payload.get("sportdb_event_id"),
         )
         db.add(match)
         db.flush()
@@ -147,6 +148,7 @@ def upsert_match(db, competition_id: int, source: str, payload: dict) -> tuple[M
             ids = match.external_ids or {}
             ids[source] = external_id
             match.external_ids = ids
+        match.sportdb_event_id = payload.get("sportdb_event_id")
 
     return match, created
 
