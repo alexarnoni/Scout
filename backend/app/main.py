@@ -169,21 +169,76 @@ def get_match_or_404(db: Session, match_id: int) -> Match:
 
 
 def _aggregate_team_player_stats(team_id: str) -> list[dict]:
-    from app.providers.sportdb_scout import get_player_season_stats, get_season_results
+    from app.providers.sportdb_scout import get_match_player_stats, get_season_results
 
     results = get_season_results()
-    team_name = None
-    for m in results:
-        if m.get("homeParticipantIds") == team_id:
-            team_name = m.get("homeName")
-            break
-        if m.get("awayParticipantIds") == team_id:
-            team_name = m.get("awayName")
-            break
+    team_matches = [
+        m for m in results
+        if m.get("eventStage") == "FINISHED"
+        and team_id in (m.get("homeParticipantIds", ""), m.get("awayParticipantIds", ""))
+    ]
+    if not team_matches:
+        return []
+
+    first_match = team_matches[0]
+    team_name = (
+        first_match.get("homeName")
+        if first_match.get("homeParticipantIds") == team_id
+        else first_match.get("awayName")
+    )
     if not team_name:
         return []
-    all_players = get_player_season_stats(season="2026", min_minutes=0)
-    return [p for p in all_players if p.get("team_name") == team_name]
+
+    players: dict[str, dict] = {}
+
+    for match in team_matches:
+        event_id = match.get("eventId", "")
+        if not event_id:
+            continue
+        try:
+            players_raw = get_match_player_stats(event_id)
+        except Exception:
+            continue
+
+        team_players = [p for p in players_raw if p.get("team_name") == team_name]
+        for p in team_players:
+            player_id = str(p.get("player_id", ""))
+            if not player_id:
+                continue
+
+            if player_id not in players:
+                players[player_id] = {
+                    "player_id": player_id,
+                    "name": str(p.get("player_name", "")),
+                    "player_name": str(p.get("player_name", "")),
+                    "goals": 0,
+                    "assists": 0,
+                    "yellow_cards": 0,
+                    "total_minutes": 0,
+                    "matches_played": 0,
+                    "_ratings": [],
+                }
+
+            acc = players[player_id]
+            acc["goals"] += int(p.get("goals", 0) or 0)
+            acc["assists"] += int(p.get("assists", 0) or 0)
+            acc["yellow_cards"] += int(p.get("yellow_cards", 0) or 0)
+            acc["total_minutes"] += int(p.get("minutes", 0) or 0)
+            acc["matches_played"] += 1
+
+            rating = p.get("rating")
+            if rating is not None:
+                rating_value = float(rating or 0.0)
+                if rating_value > 0:
+                    acc["_ratings"].append(rating_value)
+
+    aggregated: list[dict] = []
+    for acc in players.values():
+        ratings = acc.pop("_ratings", [])
+        acc["avg_rating"] = (sum(ratings) / len(ratings)) if ratings else 0.0
+        aggregated.append(acc)
+
+    return aggregated
 
 
 @app.get("/teams/{team_id}/top_scorers", response_model=TopScorersResponse)
