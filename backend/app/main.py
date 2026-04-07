@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+import time
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -75,18 +76,88 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app):
-    logger.info("sportdb pre-fetch starting...")
+def _extract_team_ids_from_standings(standings: list[dict]) -> list[str]:
+    seen: set[str] = set()
+    team_ids: list[str] = []
+    for team in standings:
+        team_id = str(team.get("teamId", "")).strip()
+        if not team_id or team_id in seen:
+            continue
+        seen.add(team_id)
+        team_ids.append(team_id)
+    return team_ids
+
+
+def _prefetch_flashscore_lineup_safe(team_id: str) -> None:
     try:
+        _get_flashscore_lineup_payload(team_id)
+    except Exception:
+        logger.warning(
+            "flashscore_lineup pre-fetch failed for team %s",
+            team_id,
+            exc_info=True,
+        )
+
+
+def _prefetch_team_season_averages_safe(team_id: str) -> None:
+    try:
+        get_team_season_averages(team_id)
+    except Exception:
+        logger.warning(
+            "season_averages pre-fetch failed for team %s",
+            team_id,
+            exc_info=True,
+        )
+
+
+async def _prefetch_heavy_team_endpoints(team_ids: list[str]) -> None:
+    logger.info("pre-fetching %s teams...", len(team_ids))
+    started_at = time.perf_counter()
+
+    batch_size = 3
+    for index in range(0, len(team_ids), batch_size):
+        batch = team_ids[index:index + batch_size]
         await asyncio.gather(
+            *(
+                asyncio.gather(
+                    asyncio.to_thread(_prefetch_flashscore_lineup_safe, team_id),
+                    asyncio.to_thread(_prefetch_team_season_averages_safe, team_id),
+                )
+                for team_id in batch
+            )
+        )
+        if index + batch_size < len(team_ids):
+            await asyncio.sleep(0.4)
+
+    elapsed = time.perf_counter() - started_at
+    logger.info("team pre-fetch completed in %.2fs", elapsed)
+
+
+async def warmup() -> bool:
+    try:
+        standings, _, _ = await asyncio.gather(
             asyncio.to_thread(get_standings, season="2026"),
             asyncio.to_thread(get_season_results, season="2026", page=1),
             asyncio.to_thread(get_season_fixtures, season="2026", page=1),
         )
-        logger.info("sportdb pre-fetch completed")
     except Exception:
         logger.warning("sportdb pre-fetch failed", exc_info=True)
+        return False
+
+    try:
+        team_ids = _extract_team_ids_from_standings(standings)
+        await _prefetch_heavy_team_endpoints(team_ids)
+    except Exception:
+        logger.warning("team pre-fetch failed", exc_info=True)
+
+    return True
+
+
+@asynccontextmanager
+async def lifespan(app):
+    logger.info("sportdb pre-fetch starting...")
+    if await warmup():
+        logger.info("sportdb pre-fetch completed")
     yield
 
 
@@ -902,13 +973,11 @@ def get_competition_standings(db: Session = Depends(get_db)) -> list[dict]:
     ]
 
 
-@app.get("/teams/{team_id}/flashscore_lineup")
-def get_flashscore_lineup(
+def _get_flashscore_lineup_payload(
     team_id: str,
-    db: Session = Depends(get_db),
+    db: Session | None = None,
 ) -> dict:
-    slug = team_id
-    if not slug:
+    if not team_id:
         raise HTTPException(status_code=404, detail=f"Slug não encontrado: {team_id}")
 
     results = get_season_results()
@@ -961,7 +1030,7 @@ def get_flashscore_lineup(
         else:
             matches_played_2026_by_id[participant_id] = matches_played
 
-    if missing_participant_ids:
+    if missing_participant_ids and db is not None:
         matches_played_2026_by_id.update(
             _get_db_matches_played_2026_by_participant_id(db, missing_participant_ids)
         )
@@ -1008,6 +1077,14 @@ def get_flashscore_lineup(
         "match_stats": stats,
         "is_home": is_home,
     }
+
+
+@app.get("/teams/{team_id}/flashscore_lineup")
+def get_flashscore_lineup(
+    team_id: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    return _get_flashscore_lineup_payload(team_id=team_id, db=db)
 
 
 @app.get("/teams/{team_id}/season_averages")
