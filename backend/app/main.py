@@ -71,28 +71,22 @@ from app.providers.sportdb import (
 )
 from app.schemas.scout import PlayerScoutCard, ScoutRanking
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app):
-    async def warmup():
-        await asyncio.sleep(5)
-        try:
-            from .providers.sportdb_scout import get_player_season_stats
-            get_player_season_stats()
-        except Exception:
-            pass
-        try:
-            await asyncio.gather(
-                asyncio.to_thread(get_standings, season="2026"),
-                asyncio.to_thread(get_season_results, season="2026", page=1),
-                asyncio.to_thread(get_season_fixtures, season="2026", page=1),
-            )
-            logger.info("sportdb pre-fetch completed: standings, results, fixtures")
-        except Exception:
-            logger.warning("sportdb pre-fetch failed", exc_info=True)
-    asyncio.create_task(warmup())
+    logger.info("sportdb pre-fetch starting...")
+    try:
+        await asyncio.gather(
+            asyncio.to_thread(get_standings, season="2026"),
+            asyncio.to_thread(get_season_results, season="2026", page=1),
+            asyncio.to_thread(get_season_fixtures, season="2026", page=1),
+        )
+        logger.info("sportdb pre-fetch completed")
+    except Exception:
+        logger.warning("sportdb pre-fetch failed", exc_info=True)
     yield
 
 
