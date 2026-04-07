@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -70,6 +71,8 @@ from app.providers.sportdb import (
 )
 from app.schemas.scout import PlayerScoutCard, ScoutRanking
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app):
@@ -80,6 +83,15 @@ async def lifespan(app):
             get_player_season_stats()
         except Exception:
             pass
+        try:
+            await asyncio.gather(
+                asyncio.to_thread(get_standings, season="2026"),
+                asyncio.to_thread(get_season_results, season="2026", page=1),
+                asyncio.to_thread(get_season_fixtures, season="2026", page=1),
+            )
+            logger.info("sportdb pre-fetch completed: standings, results, fixtures")
+        except Exception:
+            logger.warning("sportdb pre-fetch failed", exc_info=True)
     asyncio.create_task(warmup())
     yield
 
