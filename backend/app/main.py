@@ -1185,13 +1185,16 @@ def scout_moneyball(
     for p in ranking:
         mv_str = get_player_market_value(p["player_name"])
         mv_num = None
-        if mv_str:
-            match = re.search(r'[\d,.]+', mv_str.replace(',', '.'))
-            if match:
-                val = float(match.group().replace(',', '.'))
-                if 'k' in mv_str.lower():
-                    val /= 1000
-                mv_num = val
+        if mv_str and re.search(r'[€$MmKk]', mv_str):
+            try:
+                num_match = re.search(r'[\d.]+', mv_str.replace(',', '.'))
+                if num_match:
+                    val = float(num_match.group())
+                    if 'k' in mv_str.lower():
+                        val /= 1000
+                    mv_num = val
+            except (ValueError, AttributeError):
+                mv_num = None
         p["market_value"] = mv_str
         p["market_value_m"] = mv_num
 
