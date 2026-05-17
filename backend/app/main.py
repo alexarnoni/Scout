@@ -72,6 +72,7 @@ from app.providers.sportdb import (
 )
 from app.schemas.scout import PlayerScoutCard, ScoutRanking
 from app.providers.market_value_cache import get_cached_market_value, set_cached_market_value
+from app.routers.worldcup import router as worldcup_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -191,6 +192,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router)
+app.include_router(worldcup_router)
 
 
 def get_competition_or_404(db: Session, competition_id: int) -> Competition:
