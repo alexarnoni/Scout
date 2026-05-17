@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:16
     container_name: scout-postgres
+    restart: always
     environment:
       POSTGRES_DB: scout
       POSTGRES_USER: scout
