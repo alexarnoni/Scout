@@ -454,118 +454,52 @@ img.emoji {
     <div class="drawer-body" id="drawer-body"></div>
   </div>
 </div>
-<footer id="copa-footer">Olheiro · Copa do Mundo 2026 · Dados ilustrativos</footer>
+<footer id="copa-footer">Olheiro · Copa do Mundo 2026 · Dados via SportDB</footer>
 </div>
 
 <script>
-const GROUPS = [
-  { id: 'A', teams: [
-    { flag: '🇲🇽', name: 'México' },
-    { flag: '🇿🇦', name: 'África do Sul' },
-    { flag: '🇰🇷', name: 'Coreia do Sul' },
-    { flag: '🇨🇿', name: 'Rep. Tcheca' },
-  ]},
-  { id: 'B', teams: [
-    { flag: '🇨🇦', name: 'Canadá' },
-    { flag: '🇧🇦', name: 'Bósnia' },
-    { flag: '🇶🇦', name: 'Qatar' },
-    { flag: '🇨🇭', name: 'Suíça' },
-  ]},
-  { id: 'C', teams: [
-    { flag: '🇧🇷', name: 'Brasil' },
-    { flag: '🇲🇦', name: 'Marrocos' },
-    { flag: '🇭🇹', name: 'Haiti' },
-    { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', name: 'Escócia' },
-  ]},
-  { id: 'D', teams: [
-    { flag: '🇺🇸', name: 'Estados Unidos' },
-    { flag: '🇵🇾', name: 'Paraguai' },
-    { flag: '🇦🇺', name: 'Austrália' },
-    { flag: '🇹🇷', name: 'Turquia' },
-  ]},
-  { id: 'E', teams: [
-    { flag: '🇩🇪', name: 'Alemanha' },
-    { flag: '🇨🇼', name: 'Curaçao' },
-    { flag: '🇨🇮', name: 'Costa do Marfim' },
-    { flag: '🇪🇨', name: 'Equador' },
-  ]},
-  { id: 'F', teams: [
-    { flag: '🇳🇱', name: 'Holanda' },
-    { flag: '🇯🇵', name: 'Japão' },
-    { flag: '🇸🇪', name: 'Suécia' },
-    { flag: '🇹🇳', name: 'Tunísia' },
-  ]},
-  { id: 'G', teams: [
-    { flag: '🇧🇪', name: 'Bélgica' },
-    { flag: '🇪🇬', name: 'Egito' },
-    { flag: '🇮🇷', name: 'Irã' },
-    { flag: '🇳🇿', name: 'Nova Zelândia' },
-  ]},
-  { id: 'H', teams: [
-    { flag: '🇪🇸', name: 'Espanha' },
-    { flag: '🇨🇻', name: 'Cabo Verde' },
-    { flag: '🇸🇦', name: 'Arábia Saudita' },
-    { flag: '🇺🇾', name: 'Uruguai' },
-  ]},
-  { id: 'I', teams: [
-    { flag: '🇫🇷', name: 'França' },
-    { flag: '🇸🇳', name: 'Senegal' },
-    { flag: '🇮🇶', name: 'Iraque' },
-    { flag: '🇳🇴', name: 'Noruega' },
-  ]},
-  { id: 'J', teams: [
-    { flag: '🇦🇷', name: 'Argentina' },
-    { flag: '🇩🇿', name: 'Argélia' },
-    { flag: '🇦🇹', name: 'Áustria' },
-    { flag: '🇯🇴', name: 'Jordânia' },
-  ]},
-  { id: 'K', teams: [
-    { flag: '🇵🇹', name: 'Portugal' },
-    { flag: '🇨🇩', name: 'RD Congo' },
-    { flag: '🇺🇿', name: 'Uzbequistão' },
-    { flag: '🇨🇴', name: 'Colômbia' },
-  ]},
-  { id: 'L', teams: [
-    { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', name: 'Inglaterra' },
-    { flag: '🇭🇷', name: 'Croácia' },
-    { flag: '🇬🇭', name: 'Gana' },
-    { flag: '🇵🇦', name: 'Panamá' },
-  ]},
-];
+const COPA_API = 'https://scout-api.alexarnoni.com/worldcup';
 
-const TEAM_MOCK = {
-  'Brasil': {
-    squad: {
-      gk:  [{ name: 'Alisson', club: 'Liverpool' }, { name: 'Ederson', club: 'Man City' }, { name: 'Bento', club: 'Al-Nassr' }],
-      def: [{ name: 'Marquinhos', club: 'PSG' }, { name: 'Militão', club: 'Real Madrid' }, { name: 'Danilo', club: 'Juventus' }, { name: 'Alex Telles', club: 'Sevilla' }],
-      mid: [{ name: 'Bruno Guimarães', club: 'Newcastle' }, { name: 'Paquetá', club: 'West Ham' }, { name: 'Gerson', club: 'Flamengo' }, { name: 'Andrey Santos', club: 'Chelsea' }],
-      fwd: [{ name: 'Vinícius Jr', club: 'Real Madrid' }, { name: 'Rodrygo', club: 'Real Madrid' }, { name: 'Endrick', club: 'Real Madrid' }, { name: 'Raphinha', club: 'Barcelona' }],
-    },
-    fixtures: [
-      { date: '13 jun · 21h BRT', opponent: 'Marrocos 🇲🇦', venue: 'Gillette Stadium · Boston' },
-      { date: '19 jun · 18h BRT', opponent: 'Haiti 🇭🇹', venue: 'MetLife Stadium · Nova York' },
-      { date: '24 jun · 21h BRT', opponent: 'Escócia 🏴󠁧󠁢󠁳󠁣󠁴󠁿', venue: 'Lincoln Financial Field · Filadélfia' },
-    ],
-  }
+const FLAG_MAP = {
+  'Mexico':'🇲🇽','South Africa':'🇿🇦','South Korea':'🇰🇷','Czech Republic':'🇨🇿',
+  'Canada':'🇨🇦','Bosnia':'🇧🇦','Qatar':'🇶🇦','Switzerland':'🇨🇭',
+  'Brazil':'🇧🇷','Morocco':'🇲🇦','Haiti':'🇭🇹','Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'United States':'🇺🇸','Paraguay':'🇵🇾','Australia':'🇦🇺','Turkey':'🇹🇷',
+  'Germany':'🇩🇪','Curacao':'🇨🇼','Ivory Coast':'🇨🇮','Ecuador':'🇪🇨',
+  'Netherlands':'🇳🇱','Japan':'🇯🇵','Sweden':'🇸🇪','Tunisia':'🇹🇳',
+  'Belgium':'🇧🇪','Egypt':'🇪🇬','Iran':'🇮🇷','New Zealand':'🇳🇿',
+  'Spain':'🇪🇸','Cape Verde':'🇨🇻','Saudi Arabia':'🇸🇦','Uruguay':'🇺🇾',
+  'France':'🇫🇷','Senegal':'🇸🇳','Iraq':'🇮🇶','Norway':'🇳🇴',
+  'Argentina':'🇦🇷','Algeria':'🇩🇿','Austria':'🇦🇹','Jordan':'🇯🇴',
+  'Portugal':'🇵🇹','DR Congo':'🇨🇩','Uzbekistan':'🇺🇿','Colombia':'🇨🇴',
+  'England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Croatia':'🇭🇷','Ghana':'🇬🇭','Panama':'🇵🇦',
 };
+function getFlagEmoji(name) { return FLAG_MAP[name] || '🏳️'; }
 
-function renderGroups() {
+async function renderGroups() {
   const grid = document.getElementById('groups-grid');
-  grid.innerHTML = GROUPS.map(g => `
-    <div class="group-card" id="gc-${g.id}">
-      <div class="group-head">
-        <span>GRUPO ${g.id}</span>
-        <span class="group-head-cols">PJ V E D Pts</span>
-      </div>
-      ${g.teams.map(t => `
-        <div class="team-row" onclick="selectTeam('${t.flag}', '${t.name.replace(/'/g, "\\'")}', '${g.id}')">
-          <span class="team-flag">${t.flag}</span>
-          <span class="team-name-text">${t.name}</span>
-          <span class="team-pts">0</span>
+  grid.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px">Carregando grupos...</div>';
+  try {
+    const data = await fetch(`${COPA_API}/standings`).then(r => r.json());
+    grid.innerHTML = data.map(group => {
+      const groupLetter = group.roundType.replace('Group ', '');
+      const teamsHTML = group.teams.map(t => `
+        <div class="team-row" onclick="selectTeam('', '${t.teamName.replace(/'/g,"\\'")}', '${groupLetter}', '${t.teamSlug}', '${t.teamId}')">
+          <span class="team-flag">${getFlagEmoji(t.teamName)}</span>
+          <span class="team-name-text">${t.teamName}</span>
+          <span class="team-pts">${t.points}</span>
         </div>
-      `).join('')}
-    </div>
-  `).join('');
+      `).join('');
+      return `
+        <div class="group-card" id="gc-${groupLetter}">
+          <div class="group-head"><span>GRUPO ${groupLetter}</span><span class="group-head-cols">PJ V E D Pts</span></div>
+          ${teamsHTML}
+        </div>`;
+    }).join('');
+    if (typeof twemoji !== 'undefined') twemoji.parse(grid, { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
+  } catch(e) {
+    grid.innerHTML = '<div style="padding:20px;color:var(--negative)">Erro ao carregar grupos</div>';
+  }
 }
 
 function computeCountdown(now, target) {
@@ -593,37 +527,24 @@ function updateCountdown() {
 
 let selectedTeamName = null;
 
-function buildDrawerContent(teamName) {
-  const data = TEAM_MOCK[teamName];
+function buildDrawerContent(name, apiData) {
+  const squads = apiData?.squad?.[0]?.players || [];
+  const message = apiData?.message;
 
-  const squadHTML = data
-    ? `
-      <div class="pos-group">
-        <span class="pos-label pos-gk">GOL</span>
-        ${data.squad.gk.map(p => `<div class="player-row">${p.name}<span class="player-club">· ${p.club}</span></div>`).join('')}
-      </div>
-      <div class="pos-group">
-        <span class="pos-label pos-def">DEF</span>
-        ${data.squad.def.map(p => `<div class="player-row">${p.name}<span class="player-club">· ${p.club}</span></div>`).join('')}
-      </div>
-      <div class="pos-group">
-        <span class="pos-label pos-mid">MEI</span>
-        ${data.squad.mid.map(p => `<div class="player-row">${p.name}<span class="player-club">· ${p.club}</span></div>`).join('')}
-      </div>
-      <div class="pos-group">
-        <span class="pos-label pos-fwd">ATA</span>
-        ${data.squad.fwd.map(p => `<div class="player-row">${p.name}<span class="player-club">· ${p.club}</span></div>`).join('')}
-      </div>`
-    : '<div class="drawer-empty">Elenco ainda não anunciado</div>';
-
-  const fixturesHTML = data
-    ? data.fixtures.map(f => `
-        <div class="fixture-card">
-          <div class="fixture-date">${f.date}</div>
-          <div class="fixture-teams">🇧🇷 Brasil vs ${f.opponent}</div>
-          <div class="fixture-venue">${f.venue}</div>
-        </div>`).join('')
-    : '<div class="drawer-empty">Agenda a confirmar</div>';
+  let squadHTML;
+  if (message || !squads.length) {
+    squadHTML = `<div class="drawer-empty">Convocação ainda não divulgada pela FIFA</div>`;
+  } else {
+    const positions = { Goalkeepers: { label: 'GOL', cls: 'pos-gk' }, Defenders: { label: 'DEF', cls: 'pos-def' }, Midfielders: { label: 'MEI', cls: 'pos-mid' }, Attackers: { label: 'ATA', cls: 'pos-fwd' } };
+    squadHTML = Object.entries(positions).map(([pos, { label, cls }]) => {
+      const players = squads.filter(p => p.position === pos);
+      if (!players.length) return '';
+      return `<div class="pos-group">
+        <span class="pos-label ${cls}">${label}</span>
+        ${players.map(p => `<div class="player-row">${p.firstName} ${p.lastName}<span class="player-club">· ${p.club || ''}</span></div>`).join('')}
+      </div>`;
+    }).join('');
+  }
 
   return `
     <div class="drawer-section">
@@ -632,51 +553,49 @@ function buildDrawerContent(teamName) {
     </div>
     <div class="drawer-section">
       <div class="drawer-section-title">📅 Próximos jogos</div>
-      ${fixturesHTML}
+      <div class="drawer-empty">Em breve</div>
     </div>
     <div class="drawer-section">
       <div class="drawer-section-title">📊 Resultados</div>
       <div class="drawer-empty">Copa ainda não começou</div>
-    </div>
-  `;
+    </div>`;
 }
 
-function selectTeam(flag, name, group) {
+async function selectTeam(flag, name, group, slug, teamId) {
   selectedTeamName = name;
-  document.getElementById('d-flag').textContent = flag;
+  document.getElementById('d-flag').textContent = getFlagEmoji(name);
   document.getElementById('d-country').textContent = name;
   document.getElementById('d-group').textContent = `Grupo ${group}`;
-  document.getElementById('drawer-body').innerHTML = buildDrawerContent(name);
+  document.getElementById('drawer-body').innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:12px">Carregando...</div>';
 
   if (window.innerWidth >= 768) {
     document.getElementById('copa-drawer').classList.add('open');
   } else {
-    showMobileTeam(flag, name, group);
+    document.getElementById('groups-view').style.display = 'none';
+    const tv = document.getElementById('team-view');
+    tv.style.display = 'flex';
+    document.getElementById('tv-title').textContent = `${getFlagEmoji(name)} ${name}`;
   }
 
-  if (typeof twemoji !== 'undefined') {
-    twemoji.parse(document.getElementById('copa-drawer'), {
-      folder: 'svg', ext: '.svg',
-      base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/'
-    });
-    twemoji.parse(document.getElementById('team-view'), {
-      folder: 'svg', ext: '.svg',
-      base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/'
-    });
+  try {
+    const data = await fetch(`${COPA_API}/team/${slug}/${teamId}/squad`).then(r => r.json());
+    const content = buildDrawerContent(name, data);
+    document.getElementById('drawer-body').innerHTML = content;
+    document.getElementById('tv-body').innerHTML = content;
+    if (typeof twemoji !== 'undefined') {
+      twemoji.parse(document.getElementById('copa-drawer'), { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
+      twemoji.parse(document.getElementById('team-view'), { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
+    }
+  } catch(e) {
+    const err = '<div style="padding:20px;color:var(--negative);font-size:12px">Erro ao carregar dados</div>';
+    document.getElementById('drawer-body').innerHTML = err;
+    document.getElementById('tv-body').innerHTML = err;
   }
 }
 
 function closeDrawer() {
   document.getElementById('copa-drawer').classList.remove('open');
   selectedTeamName = null;
-}
-
-function showMobileTeam(flag, name, group) {
-  document.getElementById('groups-view').style.display = 'none';
-  const tv = document.getElementById('team-view');
-  tv.style.display = 'flex';
-  document.getElementById('tv-title').textContent = `${flag} ${name}`;
-  document.getElementById('tv-body').innerHTML = buildDrawerContent(name);
 }
 
 function backToGroups() {
