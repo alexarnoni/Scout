@@ -535,7 +535,7 @@ function buildDrawerContent(name, apiData) {
   if (message || !squads.length) {
     squadHTML = `<div class="drawer-empty">Convocação ainda não divulgada pela FIFA</div>`;
   } else {
-    const positions = { Goalkeepers: { label: 'GOL', cls: 'pos-gk' }, Defenders: { label: 'DEF', cls: 'pos-def' }, Midfielders: { label: 'MEI', cls: 'pos-mid' }, Attackers: { label: 'ATA', cls: 'pos-fwd' } };
+    const positions = { Goalkeepers: { label: 'GOL', cls: 'pos-gk' }, Defenders: { label: 'DEF', cls: 'pos-def' }, Midfielders: { label: 'MEI', cls: 'pos-mid' }, Forwards: { label: 'ATA', cls: 'pos-fwd' } };
     squadHTML = Object.entries(positions).map(([pos, { label, cls }]) => {
       const players = squads.filter(p => p.position === pos);
       if (!players.length) return '';
