@@ -20,7 +20,10 @@ services:
       - "8001:8000"
     depends_on:
       - db
+    volumes:
+      - scout-mv-cache:/app/data
     restart: always
 
 volumes:
   scout_pgdata:
+  scout-mv-cache:

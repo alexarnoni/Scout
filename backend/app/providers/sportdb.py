@@ -262,27 +262,74 @@ def get_player_market_value(name: str) -> Optional[str]:
 import logging
 import time
 
+from app.providers.market_value_cache import (
+    init_cache,
+    get_cached_market_value,
+    set_cached_market_value,
+    get_cache_stats,
+)
+
 _prefetch_logger = logging.getLogger(__name__)
 
 
 def prefetch_market_values(player_names: list[str]) -> None:
-    """Busca market value de cada jogador, populando o cache interno.
+    """Busca market value de cada jogador, usando cache persistente em disco.
 
-    Chamadas que já estão em cache são ignoradas automaticamente
-    (search_player e get_player_profile já fazem cache via _cached_get).
+    Para cada jogador verifica o cache em disco antes de chamar a API.
+    Cache hits pulam a chamada à API e o rate-limiting.
     Erros individuais são silenciados — o objetivo é popular o cache,
     não garantir 100% de cobertura.
     """
-    _prefetch_logger.info("Prefetch market values: %d jogadores", len(player_names))
+    # 3.1 — Inicializar cache persistente
+    init_cache()
+
+    stats = get_cache_stats()
+    _prefetch_logger.info(
+        "Prefetch market values: %d jogadores | cache stats: %s",
+        len(player_names),
+        stats,
+    )
+
     fetched = 0
+    cached = 0
     errors = 0
+
     for name in player_names:
+        # 3.2 — Verificar cache antes de chamar a API
+        cached_value = get_cached_market_value(name)
+        if cached_value is not None:
+            cached += 1
+            continue
+
+        # Cache miss — chamar API
         try:
-            get_player_market_value(name)
+            result = get_player_market_value(name)
             fetched += 1
+
+            # 3.3 — Armazenar resultado no cache persistente
+            if result is not None:
+                set_cached_market_value(name, result)
         except Exception:
             errors += 1
-        time.sleep(0.1)  # cortesia com a API — 10 req/s max
+
+        # 3.4 — Rate limiting apenas para chamadas reais à API
+        time.sleep(0.1)
+
+        # Log de progresso a cada 50 chamadas à API
+        if fetched > 0 and fetched % 50 == 0:
+            _prefetch_logger.info(
+                "Prefetch progresso: %d fetched, %d cached, %d errors",
+                fetched,
+                cached,
+                errors,
+            )
+
+    # 3.5 — Logar estatísticas finais
+    final_stats = get_cache_stats()
     _prefetch_logger.info(
-        "Prefetch market values concluído: %d ok, %d erros", fetched, errors
+        "Prefetch concluído: %d fetched, %d cached (skipped), %d errors | cache stats: %s",
+        fetched,
+        cached,
+        errors,
+        final_stats,
     )
