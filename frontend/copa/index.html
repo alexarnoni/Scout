@@ -476,17 +476,21 @@ const FLAG_MAP = {
 };
 function getFlagEmoji(name) { return FLAG_MAP[name] || '🏳️'; }
 
+const NAME_PT = {'Mexico':'México','South Africa':'África do Sul','South Korea':'Coreia do Sul','Czech Republic':'República Tcheca','Canada':'Canadá','Bosnia':'Bósnia-Herzegovina','Qatar':'Catar','Switzerland':'Suíça','Brazil':'Brasil','Morocco':'Marrocos','Haiti':'Haiti','Scotland':'Escócia','United States':'Estados Unidos','Paraguay':'Paraguai','Australia':'Austrália','Turkey':'Turquia','Germany':'Alemanha','Curacao':'Curaçao','Ivory Coast':'Costa do Marfim','Ecuador':'Equador','Netherlands':'Holanda','Japan':'Japão','Sweden':'Suécia','Tunisia':'Tunísia','Belgium':'Bélgica','Egypt':'Egito','Iran':'Irã','New Zealand':'Nova Zelândia','Spain':'Espanha','Cape Verde':'Cabo Verde','Saudi Arabia':'Arábia Saudita','Uruguay':'Uruguai','France':'França','Senegal':'Senegal','Iraq':'Iraque','Norway':'Noruega','Argentina':'Argentina','Algeria':'Argélia','Austria':'Áustria','Jordan':'Jordânia','Portugal':'Portugal','DR Congo':'Rep. Dem. do Congo','D.R. Congo':'Rep. Dem. do Congo','Uzbekistan':'Uzbequistão','Colombia':'Colômbia','England':'Inglaterra','Croatia':'Croácia','Ghana':'Gana','Panama':'Panamá',};
+function namePt(name) { return NAME_PT[name] || name; }
+
 async function renderGroups() {
   const grid = document.getElementById('groups-grid');
   grid.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px">Carregando grupos...</div>';
   try {
-    const data = await fetch(`${COPA_API}/standings`).then(r => r.json());
+    let data = await fetch(`${COPA_API}/standings`).then(r => r.json());
+    data = data.filter(g => /^Group [A-L]$/.test(g.roundType));
     grid.innerHTML = data.map(group => {
       const groupLetter = group.roundType.replace('Group ', '');
       const teamsHTML = group.teams.map(t => `
-        <div class="team-row" onclick="selectTeam('', '${t.teamName.replace(/'/g,"\\'")}', '${groupLetter}', '${t.teamSlug}', '${t.teamId}')">
+        <div class="team-row" onclick="selectTeam('', '${namePt(t.teamName).replace(/'/g,"\\'")}', '${groupLetter}', '${t.teamSlug}', '${t.teamId}')">
           <span class="team-flag">${getFlagEmoji(t.teamName)}</span>
-          <span class="team-name-text">${t.teamName}</span>
+          <span class="team-name-text">${namePt(t.teamName)}</span>
           <span class="team-pts">${t.points}</span>
         </div>
       `).join('');
