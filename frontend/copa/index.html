@@ -372,7 +372,7 @@ img.emoji {
   display: inline-block;
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -511,7 +511,7 @@ async function renderGroups() {
           ${teamsHTML}
         </div>`;
     }).join('');
-    if (typeof twemoji !== 'undefined') twemoji.parse(grid, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
+    if (typeof twemoji !== 'undefined') twemoji.parse(grid, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
   } catch(e) {
     grid.innerHTML = '<div style="padding:20px;color:var(--negative)">Erro ao carregar grupos</div>';
   }
@@ -631,8 +631,8 @@ async function selectTeam(flag, name, group, slug, teamId) {
     document.getElementById('drawer-body').innerHTML = content;
     document.getElementById('tv-body').innerHTML = content;
     if (typeof twemoji !== 'undefined') {
-      twemoji.parse(document.getElementById('copa-drawer'), { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
-      twemoji.parse(document.getElementById('team-view'), { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
+      twemoji.parse(document.getElementById('copa-drawer'), { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
+      twemoji.parse(document.getElementById('team-view'), { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
     }
   } catch(e) {
     const err = '<div style="padding:20px;color:var(--negative);font-size:12px">Erro ao carregar dados</div>';
@@ -747,7 +747,7 @@ function renderBracket() {
   }).join('');
 
   if (typeof twemoji !== 'undefined') {
-    twemoji.parse(wrap, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
+    twemoji.parse(wrap, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
   }
 }
 
@@ -763,7 +763,7 @@ async function loadTicker() {
     ).join('');
     track.style.animationDuration = (items.length * 4) + 's';
     if (typeof twemoji !== 'undefined') {
-      twemoji.parse(track, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
+      twemoji.parse(track, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
     }
   } catch(e) {
     const el = document.getElementById('copa-ticker');
@@ -783,7 +783,7 @@ if (typeof twemoji !== 'undefined') {
   twemoji.parse(document.body, {
     folder: 'svg',
     ext: '.svg',
-    base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/'
+    base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'
   });
 }
 </script>
