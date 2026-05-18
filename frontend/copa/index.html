@@ -372,7 +372,7 @@ img.emoji {
   display: inline-block;
 }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -511,7 +511,7 @@ async function renderGroups() {
           ${teamsHTML}
         </div>`;
     }).join('');
-    if (typeof twemoji !== 'undefined') twemoji.parse(grid, { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
+    if (typeof twemoji !== 'undefined') twemoji.parse(grid, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
   } catch(e) {
     grid.innerHTML = '<div style="padding:20px;color:var(--negative)">Erro ao carregar grupos</div>';
   }
@@ -542,7 +542,7 @@ function updateCountdown() {
 
 let selectedTeamName = null;
 
-function buildDrawerContent(name, apiData) {
+function buildDrawerContent(name, apiData, fixturesHTML = '') {
   const squads = apiData?.squad?.[0]?.players || [];
   const message = apiData?.message;
 
@@ -561,6 +561,8 @@ function buildDrawerContent(name, apiData) {
     }).join('');
   }
 
+  const fixturesSection = fixturesHTML || '<div class="drawer-empty">Em breve</div>';
+
   return `
     <div class="drawer-section">
       <div class="drawer-section-title">👕 Convocados</div>
@@ -568,12 +570,40 @@ function buildDrawerContent(name, apiData) {
     </div>
     <div class="drawer-section">
       <div class="drawer-section-title">📅 Próximos jogos</div>
-      <div class="drawer-empty">Em breve</div>
+      ${fixturesSection}
     </div>
     <div class="drawer-section">
       <div class="drawer-section-title">📊 Resultados</div>
       <div class="drawer-empty">Copa ainda não começou</div>
     </div>`;
+}
+
+async function loadFixtures(teamId, teamNamePt) {
+  try {
+    const data = await fetch(`${COPA_API}/fixtures`).then(r => r.json());
+    const jogos = data.filter(f =>
+      f.homeParticipantIds === teamId || f.awayParticipantIds === teamId
+    );
+    if (!jogos.length) return '<div class="drawer-empty">Nenhum jogo encontrado</div>';
+    return jogos.map(f => {
+      const isHome = f.homeParticipantIds === teamId;
+      const opponent = isHome ? f.awayName : f.homeName;
+      const opponentPt = namePt(opponent);
+      const date = new Date(f.startDateTimeUtc);
+      const brt = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+      const dia = brt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+      const hora = brt.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+      const mando = isHome ? `${teamNamePt} × ${opponentPt}` : `${opponentPt} × ${teamNamePt}`;
+      return `
+        <div class="fixture-card">
+          <div class="fixture-date">${dia} · ${hora} BRT</div>
+          <div class="fixture-teams">${mando}</div>
+          <div class="fixture-venue">${f.standingGroup?.replace('Group ','Grupo ') || ''}</div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    return '<div class="drawer-empty">Erro ao carregar jogos</div>';
+  }
 }
 
 async function selectTeam(flag, name, group, slug, teamId) {
@@ -593,13 +623,16 @@ async function selectTeam(flag, name, group, slug, teamId) {
   }
 
   try {
-    const data = await fetch(`${COPA_API}/team/${slug}/${teamId}/squad`).then(r => r.json());
-    const content = buildDrawerContent(name, data);
+    const [data, fixturesHTML] = await Promise.all([
+      fetch(`${COPA_API}/team/${slug}/${teamId}/squad`).then(r => r.json()),
+      loadFixtures(teamId, name)
+    ]);
+    const content = buildDrawerContent(name, data, fixturesHTML);
     document.getElementById('drawer-body').innerHTML = content;
     document.getElementById('tv-body').innerHTML = content;
     if (typeof twemoji !== 'undefined') {
-      twemoji.parse(document.getElementById('copa-drawer'), { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
-      twemoji.parse(document.getElementById('team-view'), { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
+      twemoji.parse(document.getElementById('copa-drawer'), { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
+      twemoji.parse(document.getElementById('team-view'), { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
     }
   } catch(e) {
     const err = '<div style="padding:20px;color:var(--negative);font-size:12px">Erro ao carregar dados</div>';
@@ -714,7 +747,7 @@ function renderBracket() {
   }).join('');
 
   if (typeof twemoji !== 'undefined') {
-    twemoji.parse(wrap, { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
+    twemoji.parse(wrap, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
   }
 }
 
@@ -730,7 +763,7 @@ async function loadTicker() {
     ).join('');
     track.style.animationDuration = (items.length * 4) + 's';
     if (typeof twemoji !== 'undefined') {
-      twemoji.parse(track, { folder: 'svg', ext: '.svg', base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/' });
+      twemoji.parse(track, { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
     }
   } catch(e) {
     const el = document.getElementById('copa-ticker');
@@ -750,7 +783,7 @@ if (typeof twemoji !== 'undefined') {
   twemoji.parse(document.body, {
     folder: 'svg',
     ext: '.svg',
-    base: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/'
+    base: 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/'
   });
 }
 </script>
